@@ -11,7 +11,7 @@ from time import perf_counter
 from datetime import datetime
 from model.cvit import CViT
 from helpers.loader import load_data
-
+import optparse
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
