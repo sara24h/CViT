@@ -11,7 +11,7 @@ from time import perf_counter
 from datetime import datetime
 from model.cvit import CViT
 from helpers.loader import load_data
-
+import optparse
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -22,13 +22,15 @@ model.to(device)
 
 print(f'using {device}')
 
+
 def train(dir_path, num_epochs, test_model, batch_size, lr, weight_decay):
-    dataloaders, dataset_sizes = load_data(dir_path, batch_size)
+    # Unpack the three returned values from load_data
+    batch_size, dataloaders, dataset_sizes = load_data(dir_path, batch_size)
 
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss()
     criterion.to(device)
-    min_val_loss=10000
+    min_val_loss = 10000
     scheduler = lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
 
     since = time.time()
@@ -67,11 +69,11 @@ def train(dir_path, num_epochs, test_model, batch_size, lr, weight_decay):
             running_loss += loss.item() * inputs.size(0)
             running_corrects += torch.sum(preds == labels.data)
 
-            if idx%100==0:
+            if idx % 100 == 0:
                 print(f'Train loss: {loss.item()}')
                 print('Train Epoch: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    idx * batch_size, dataset_sizes['train'], \
-                    100. * idx*batch_size / dataset_sizes['train'], loss.item()))
+                    idx * batch_size, dataset_sizes['train'],
+                    100. * idx * batch_size / dataset_sizes['train'], loss.item()))
 
         epoch_loss = running_loss / dataset_sizes['train']
         epoch_acc = running_corrects.float() / dataset_sizes['train']
@@ -92,7 +94,6 @@ def train(dir_path, num_epochs, test_model, batch_size, lr, weight_decay):
             
             with torch.no_grad():
                 outputs = model(inputs)
-
                 _, preds = torch.max(outputs, 1)
                 loss = criterion(outputs, labels)
 
@@ -108,33 +109,33 @@ def train(dir_path, num_epochs, test_model, batch_size, lr, weight_decay):
         print('{} Loss: {:.4f} Acc: {:.4f}'.format('validation', epoch_loss, epoch_acc))
 
         if epoch_loss < min_loss:
-            print('\nValidation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(epoch_loss, min_loss))
+            print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(epoch_loss, min_loss))
             min_loss = epoch_loss
             best_model_wts = copy.deepcopy(model.state_dict())    
         
         scheduler.step()
 
     time_elapsed = time.time() - since
-    print('\nTraining complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
-    
-    # load best model weights
+    # Load best model weights
     model.load_state_dict(best_model_wts)
 
     with open('weight/cvit_deepfake_detection_v2.pkl', 'wb') as f:
         pickle.dump([train_loss, train_accu, val_loss, val_accu], f)
 
-    state = {'epoch': num_epochs+1, 
+    state = {'epoch': num_epochs + 1, 
              'state_dict': model.state_dict(),
              'optimizer': optimizer.state_dict(),
-             'min_loss':epoch_loss}
+             'min_loss': epoch_loss}
     curr_time = datetime.now().strftime("%B_%d_%Y_%H_%M_%S")
     torch.save(state, f'weight/cvit_deepfake_detection_{curr_time}.pth')
 
     if test_model:
         test(model, dataloaders, dataset_sizes)
 
-    return train_loss,train_accu,val_loss,val_accu, min_loss
+    return train_loss, train_accu, val_loss, val_accu, min_loss
+
 
 def test(model, dataloaders, dataset_sizes):
     model.eval()
@@ -175,15 +176,16 @@ def main():
     start_time = perf_counter()
     dir_path, num_epochs, test_model, batch_size, lr, weight_decay = gen_parser()
     print('Training Configuration:')
-    print(f'\npath: {dir_path}')
-    print(f'\nepoch: {num_epochs}')
-    print(f'\ntest_model: {test_model}')
-    print(f'\nbatch_size: {batch_size}')
+    print(f'path: {dir_path}')
+    print(f'epoch: {num_epochs}')
+    print(f'test_model: {test_model}')
+    print(f'batch_size: {batch_size}')
 
     train(dir_path, num_epochs, test_model, batch_size, lr, weight_decay)
 
     end_time = perf_counter()
-    print("\n\n--- %s seconds ---" % (end_time - start_time))
+    print("--- %s seconds ---" % (end_time - start_time))
 
 if __name__ == "__main__":
     main()
+
